@@ -401,10 +401,22 @@ const SEED = [
   },
 ];
 
+const IN_CLAUDE = typeof window.storage !== 'undefined';
+const store = {
+  async get(k){
+    if(IN_CLAUDE){ const r = await window.storage.get(k,false); return r && r.value ? r.value : null; }
+    try{ return localStorage.getItem(k); }catch(e){ return null; }
+  },
+  async set(k,v){
+    if(IN_CLAUDE){ await window.storage.set(k,v,false); return; }
+    localStorage.setItem(k,v);
+  }
+};
+
 async function loadData(){
   try{
-    const res = await window.storage.get('fragrances', false);
-    state.fragrances = res && res.value ? JSON.parse(res.value) : null;
+    const raw = await store.get('fragrances');
+    state.fragrances = raw ? JSON.parse(raw) : null;
   }catch(e){
     state.fragrances = null;
   }
@@ -417,9 +429,9 @@ async function loadData(){
 
 async function saveData(){
   try{
-    await window.storage.set('fragrances', JSON.stringify(state.fragrances), false);
+    await store.set('fragrances', JSON.stringify(state.fragrances));
   }catch(e){
-    showToast("儲存失敗，請重試");
+    showToast("儲存失敗，請確認瀏覽器未封鎖儲存功能");
   }
 }
 
@@ -549,6 +561,7 @@ function openForm(id){
       <button class="icon-btn" id="closeBtn">✕</button>
     </div>
 
+    ${IN_CLAUDE ? `
     <div class="smart-box">
       <div class="smart-title">🔎 自動搜尋填寫</div>
       <div class="smart-hint">輸入「品牌＋名稱」，或貼上香水介紹網址（官網、Fragrantica 等），自動查詢並填入下方欄位。</div>
@@ -557,7 +570,18 @@ function openForm(id){
         <button id="smartBtn">搜尋</button>
       </div>
       <div class="smart-status" id="smartStatus"></div>
-    </div>
+    </div>` : `
+    <div class="smart-box">
+      <div class="smart-title">🔎 請 Claude 協助填寫</div>
+      <div class="smart-hint">① 輸入名稱或貼上網址，按「複製指令」<br>② 到 Claude 貼上指令並送出<br>③ 把 Claude 回傳的 JSON 貼到下方，按「匯入」</div>
+      <div class="smart-row">
+        <input type="text" id="smartInput" placeholder="例如 Diptyque Do Son 或貼上網址">
+        <button id="smartCopyBtn">複製指令</button>
+      </div>
+      <div class="field" style="margin:10px 0 0;"><textarea id="smartPaste" placeholder="把 Claude 回傳的 JSON 貼在這裡"></textarea></div>
+      <div class="smart-row" style="margin-top:8px;"><button id="smartImportBtn" style="padding:10px 14px;">匯入</button></div>
+      <div class="smart-status" id="smartStatus"></div>
+    </div>`}
 
     <div class="row2">
       <div class="field"><label>品牌</label><input type="text" id="f_brand" value="${esc(draft.brand)}" placeholder="例如 Jo Malone"></div>
@@ -627,10 +651,15 @@ function openForm(id){
       }
     };
   });
-  document.getElementById('smartBtn').onclick = smartFill;
-  document.getElementById('smartInput').addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter'){ e.preventDefault(); smartFill(); }
-  });
+  if(IN_CLAUDE){
+    document.getElementById('smartBtn').onclick = smartFill;
+    document.getElementById('smartInput').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ e.preventDefault(); smartFill(); }
+    });
+  }else{
+    document.getElementById('smartCopyBtn').onclick = copyPrompt;
+    document.getElementById('smartImportBtn').onclick = importPasted;
+  }
   document.getElementById('saveBtn').onclick = async ()=>{
     draft.brand = document.getElementById('f_brand').value.trim();
     draft.name = document.getElementById('f_name').value.trim();
@@ -661,25 +690,44 @@ function openForm(id){
   document.getElementById('overlay').classList.add('open');
 }
 
+function buildPrompt(q){
+  const owned = state.fragrances
+    .filter(f => f.id !== editingId)
+    .map(f => `${f.brand} ${f.name}（${f.family}）`)
+    .join('；');
+  return `請用網路搜尋這支香水的公開資訊（優先官方網站，其次 Fragrantica 等）：「${q}」。若輸入是網址，請以該網頁內容為主。
+只回傳一個 JSON 物件，不要有任何其他文字或 markdown，格式如下：
+{"brand":"品牌","name":"香水名稱","family":"香調分類（繁體中文，例如 花香柑橘）","topNotes":"前調（繁體中文，以頓號分隔）","middleNotes":"中調","baseNotes":"後調","layering":"建議疊擦，1–2 句繁體中文","occasions":["從清單挑 2–4 個：${OCCASIONS.join('、')}"]}
+規則：查不到的調性請留空字串，不要編造；若查無此香水，brand 與 name 也留空。疊擦建議請優先參考使用者已有的香水：${owned || '（無）'}。`;
+}
+
+function applyResult(r){
+  const status = document.getElementById('smartStatus');
+  if(!r.brand && !r.name){
+    status.textContent = '查無這支香水，請換個關鍵字或貼上介紹網址。';
+    return;
+  }
+  const set = (id, v) => { if(v) document.getElementById(id).value = v; };
+  set('f_brand', r.brand); set('f_name', r.name); set('f_family', r.family);
+  set('f_top', r.topNotes); set('f_mid', r.middleNotes); set('f_base', r.baseNotes);
+  set('f_layering', r.layering);
+  const occ = (r.occasions||[]).filter(o => OCCASIONS.includes(o));
+  if(occ.length){
+    draft.occasions = occ;
+    document.querySelectorAll('#occSelect .chip-toggle').forEach(el=>{
+      el.classList.toggle('on', occ.includes(el.dataset.v));
+    });
+  }
+  status.textContent = '已填入！請確認內容後按「儲存」。查不到的欄位已留空。';
+}
+
 async function smartFill(){
   const q = document.getElementById('smartInput').value.trim();
   const btn = document.getElementById('smartBtn');
   const status = document.getElementById('smartStatus');
   if(!q){ status.textContent = '請先輸入香水名稱或網址'; return; }
-
   btn.disabled = true; btn.textContent = '搜尋中…';
   status.textContent = '正在查詢公開資料，約需 10–20 秒…';
-
-  const owned = state.fragrances
-    .filter(f => f.id !== editingId)
-    .map(f => `${f.brand} ${f.name}（${f.family}）`)
-    .join('；');
-
-  const prompt = `請用網路搜尋這支香水的公開資訊（優先官方網站，其次 Fragrantica 等）：「${q}」。若輸入是網址，請以該網頁內容為主。
-只回傳一個 JSON 物件，不要有任何其他文字或 markdown，格式如下：
-{"brand":"品牌","name":"香水名稱","family":"香調分類（繁體中文，例如 花香柑橘）","topNotes":"前調（繁體中文，以頓號分隔）","middleNotes":"中調","baseNotes":"後調","layering":"建議疊擦，1–2 句繁體中文","occasions":["從清單挑 2–4 個：${OCCASIONS.join('、')}"]}
-規則：查不到的調性請留空字串，不要編造；若查無此香水，brand 與 name 也留空。疊擦建議請優先參考使用者已有的香水：${owned || '（無）'}。`;
-
   try{
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
@@ -688,37 +736,46 @@ async function smartFill(){
         model:"claude-sonnet-4-6",
         max_tokens:1000,
         tools:[{type:"web_search_20250305", name:"web_search"}],
-        messages:[{role:"user", content:prompt}]
+        messages:[{role:"user", content:buildPrompt(q)}]
       })
     });
     const data = await res.json();
     const text = (data.content||[]).map(b => b.type==='text' ? b.text : '').join('');
     const m = text.match(/\{[\s\S]*\}/);
     if(!m) throw new Error('no json');
-    const r = JSON.parse(m[0]);
-
-    if(!r.brand && !r.name){
-      status.textContent = '查無這支香水，請換個關鍵字或貼上介紹網址。';
-      return;
-    }
-
-    const set = (id, v) => { if(v) document.getElementById(id).value = v; };
-    set('f_brand', r.brand); set('f_name', r.name); set('f_family', r.family);
-    set('f_top', r.topNotes); set('f_mid', r.middleNotes); set('f_base', r.baseNotes);
-    set('f_layering', r.layering);
-
-    const occ = (r.occasions||[]).filter(o => OCCASIONS.includes(o));
-    if(occ.length){
-      draft.occasions = occ;
-      document.querySelectorAll('#occSelect .chip-toggle').forEach(el=>{
-        el.classList.toggle('on', occ.includes(el.dataset.v));
-      });
-    }
-    status.textContent = '已填入！請確認內容後按「儲存」。查不到的欄位已留空。';
+    applyResult(JSON.parse(m[0]));
   }catch(e){
     status.textContent = '搜尋失敗，請稍後再試，或貼上介紹網址。';
   }finally{
     btn.disabled = false; btn.textContent = '搜尋';
+  }
+}
+
+async function copyPrompt(){
+  const q = document.getElementById('smartInput').value.trim();
+  const status = document.getElementById('smartStatus');
+  if(!q){ status.textContent = '請先輸入香水名稱或網址'; return; }
+  const text = buildPrompt(q);
+  try{
+    await navigator.clipboard.writeText(text);
+    status.textContent = '指令已複製！請貼到 Claude，再把回傳的 JSON 貼回下方。';
+  }catch(e){
+    const ta = document.getElementById('smartPaste');
+    ta.value = text; ta.select();
+    status.textContent = '無法自動複製，指令已放在下方框中，請手動複製後貼到 Claude。';
+  }
+}
+
+function importPasted(){
+  const status = document.getElementById('smartStatus');
+  const raw = document.getElementById('smartPaste').value;
+  const m = raw.match(/\{[\s\S]*\}/);
+  if(!m){ status.textContent = '找不到 JSON，請貼上 Claude 回傳的完整內容。'; return; }
+  try{
+    applyResult(JSON.parse(m[0]));
+    document.getElementById('smartPaste').value = '';
+  }catch(e){
+    status.textContent = '格式無法解析，請確認貼上的是完整的 JSON。';
   }
 }
 
