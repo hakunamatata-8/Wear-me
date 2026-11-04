@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>香氣手記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1EFE3;
+    --bg-card:#FCFBF4;
+    --ink:#262B21;
+    --ink-soft:#5C6152;
+    --forest:#3F4F35;
+    --forest-deep:#28331F;
+    --moss:#7C8F6A;
+    --moss-light:#B9C6A9;
+    --bark:#8B6F4E;
+    --bark-deep:#6B5539;
+    --clay:#A9754F;
+    --berry:#8B5A4E;
+    --line:#DAD5BF;
+    --card-shadow: 0 1px 3px rgba(40,51,31,0.08), 0 8px 24px rgba(40,51,31,0.07);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:100px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 18px;}
+
+  header{
+    padding:28px 18px 18px;
+    background:linear-gradient(180deg, var(--forest-deep) 0%, var(--forest) 100%);
+    color:#F1EFE3;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute; right:-30px; top:-30px;
+    width:160px; height:160px; border-radius:50%;
+    background:radial-gradient(circle, rgba(185,198,169,0.25), transparent 70%);
+  }
+  header .eyebrow{
+    font-size:12px; letter-spacing:0.18em; color:var(--moss-light);
+    text-transform:uppercase; margin-bottom:6px;
+  }
+  header h1{
+    font-family:'Noto Serif TC', serif;
+    font-weight:700; font-size:30px; margin:0 0 4px;
+    letter-spacing:0.02em;
+  }
+  header p{
+    margin:0; font-size:13.5px; color:#D9DECB; line-height:1.6; max-width:44ch;
+  }
+
+  .stats-row{
+    display:flex; gap:10px; margin-top:18px;
+  }
+  .stat-pill{
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:10px; padding:8px 12px; flex:1; text-align:center;
+  }
+  .stat-pill .n{font-family:'Noto Serif TC',serif; font-size:19px; font-weight:700; color:#fff;}
+  .stat-pill .l{font-size:11px; color:#CBD3B9; margin-top:1px;}
+
+  .controls{
+    padding:16px 18px 6px;
+    position:sticky; top:0; z-index:20;
+    background:var(--bg);
+    border-bottom:1px solid var(--line);
+  }
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:9px 12px; margin-bottom:10px;
+  }
+  .search-box input{
+    border:none; outline:none; font-size:14px; width:100%;
+    font-family:'Noto Sans TC',sans-serif; color:var(--ink); background:transparent;
+  }
+  .search-box svg{flex-shrink:0; opacity:0.5;}
+
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab-btn{
+    flex-shrink:0; border:1px solid var(--line); background:#fff; color:var(--ink-soft);
+    padding:7px 14px; border-radius:999px; font-size:13px; cursor:pointer;
+    font-family:'Noto Sans TC',sans-serif; transition:all .15s;
+  }
+  .tab-btn.active{background:var(--forest); color:#fff; border-color:var(--forest);}
+
+  .grid{padding:16px 18px 8px; display:flex; flex-direction:column; gap:12px;}
+
+  .card{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:16px;
+    padding:14px 16px; cursor:pointer; box-shadow:var(--card-shadow);
+    display:flex; flex-direction:column; gap:10px;
+    transition:transform .12s;
+  }
+  .card:active{transform:scale(0.985);}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .card-brand{font-size:11.5px; color:var(--ink-soft); letter-spacing:0.06em; text-transform:uppercase;}
+  .card-name{font-family:'Noto Serif TC',serif; font-weight:600; font-size:19px; margin-top:2px; line-height:1.3;}
+  .badge{
+    flex-shrink:0; font-size:11px; padding:4px 10px; border-radius:999px; font-weight:500;
+    white-space:nowrap; margin-top:1px;
+  }
+  .badge.owned{background:#E4E7D8; color:var(--forest-deep);}
+  .badge.liked{background:#EADDD5; color:var(--berry);}
+  .badge.wishlist{background:#E2E5DA; color:var(--moss);}
+
+  .mini-pyramid{display:flex; flex-direction:column; align-items:center; gap:3px; margin:2px 0;}
+  .mini-pyramid .band{height:6px; border-radius:3px;}
+  .mini-pyramid .band.top{width:34%; background:var(--moss-light);}
+  .mini-pyramid .band.mid{width:62%; background:var(--moss);}
+  .mini-pyramid .band.base{width:100%; background:var(--bark-deep);}
+
+  .chip-row{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{
+    font-size:11px; padding:3px 9px; border-radius:8px;
+    background:#EDEBDC; color:var(--ink-soft);
+  }
+  .chip.family{background:#DEE3CE; color:var(--forest-deep); font-weight:500;}
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-soft);
+  }
+  .empty-state .icon{font-size:34px; margin-bottom:10px;}
+  .empty-state h3{font-family:'Noto Serif TC',serif; font-size:18px; margin:0 0 6px; color:var(--ink);}
+  .empty-state p{font-size:13px; line-height:1.7; margin:0;}
+
+  .fab{
+    position:fixed; bottom:24px; right:20px; z-index:30;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--forest); color:#fff; border:none;
+    box-shadow:0 6px 18px rgba(40,51,31,0.35);
+    font-size:26px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(38,43,33,0.55); z-index:50;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .overlay.open{display:flex;}
+  .sheet{
+    background:var(--bg); width:100%; max-width:640px;
+    max-height:92vh; overflow-y:auto; border-radius:20px 20px 0 0;
+    padding:20px 20px 30px; animation:slideUp .22s ease-out;
+  }
+  @keyframes slideUp{from{transform:translateY(24px);opacity:0;} to{transform:translateY(0);opacity:1;}}
+  .sheet-handle{width:40px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px;}
+
+  .sheet-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+  .sheet-header h2{font-family:'Noto Serif TC',serif; font-size:21px; margin:0; font-weight:700;}
+  .icon-btn{
+    border:none; background:#E9E7D9; width:32px; height:32px; border-radius:50%;
+    font-size:16px; cursor:pointer; color:var(--ink-soft); display:flex; align-items:center; justify-content:center;
+  }
+
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:5px; font-weight:500;
+  }
+  .field input[type=text], .field textarea, .field select{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);
+    outline:none;
+  }
+  .field textarea{resize:vertical; min-height:56px;}
+  .field input:focus, .field textarea:focus, .field select:focus{border-color:var(--moss);}
+  .row2{display:flex; gap:10px;}
+  .row2 .field{flex:1;}
+
+  .status-picker{display:flex; gap:8px;}
+  .status-opt{
+    flex:1; text-align:center; padding:9px 6px; border-radius:10px; border:1px solid var(--line);
+    font-size:12.5px; cursor:pointer; color:var(--ink-soft); background:#fff;
+  }
+  .status-opt.sel[data-v="owned"]{background:#E4E7D8; border-color:var(--forest); color:var(--forest-deep);}
+  .status-opt.sel[data-v="liked"]{background:#EADDD5; border-color:var(--berry); color:var(--berry);}
+  .status-opt.sel[data-v="wishlist"]{background:#E2E5DA; border-color:var(--moss); color:var(--moss);}
+
+  .chip-select{display:flex; flex-wrap:wrap; gap:7px;}
+  .chip-toggle{
+    padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:#fff;
+    font-size:12.5px; color:var(--ink-soft); cursor:pointer;
+  }
+  .chip-toggle.on{background:var(--moss); border-color:var(--moss); color:#fff;}
+
+  .pyramid-full{margin:14px 0 18px;}
+  .pyr-band{padding:10px 14px; border-radius:10px; margin-bottom:6px; font-size:13px;}
+  .pyr-band .lbl{font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; opacity:0.75; margin-bottom:2px;}
+  .pyr-band.top{background:#E3E7D6; width:60%; margin:0 auto 6px;}
+  .pyr-band.mid{background:#C7D0B4; width:80%; margin:0 auto 6px;}
+  .pyr-band.base{background:var(--bark-deep); color:#fff; width:100%;}
+  .pyr-band.top .lbl{color:#556047;}
+  .pyr-band.mid .lbl{color:#3F4A32;}
+  .pyr-band.base .lbl{color:#E8DFCF;}
+  .pyr-band .val{line-height:1.5;}
+  .pyr-band.empty .val{opacity:0.45; font-style:italic;}
+
+  .detail-block{margin-bottom:16px;}
+  .detail-block h4{
+    font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--forest-deep);
+    margin:0 0 6px; font-weight:600;
+  }
+  .detail-block .body-text{font-size:13.5px; line-height:1.7; color:var(--ink);}
+  .detail-block .body-text.muted{color:var(--ink-soft); font-style:italic; opacity:0.7;}
+
+  .btn-row{display:flex; gap:10px; margin-top:20px;}
+  .btn{
+    flex:1; border:none; border-radius:12px; padding:13px; font-size:14.5px; font-weight:600;
+    cursor:pointer; font-family:'Noto Sans TC',sans-serif;
+  }
+  .btn-primary{background:var(--forest); color:#fff;}
+  .btn-ghost{background:#E9E7D9; color:var(--ink-soft);}
+  .btn-danger{background:#EADDD5; color:#8A4A3D;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:10px 20px; border-radius:999px;
+    font-size:13px; z-index:100; opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+
+  .smart-box{
+    background:#E4E8D6; border:1px solid var(--moss-light); border-radius:14px;
+    padding:12px 14px; margin-bottom:18px;
+  }
+  .smart-box .smart-title{font-size:13px; font-weight:600; color:var(--forest-deep); margin-bottom:2px;}
+  .smart-box .smart-hint{font-size:11.5px; color:var(--ink-soft); margin-bottom:10px; line-height:1.5;}
+  .smart-row{display:flex; gap:8px;}
+  .smart-row input{
+    flex:1; min-width:0; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; outline:none;
+  }
+  .smart-row button{
+    flex-shrink:0; border:none; border-radius:10px; padding:0 14px; background:var(--forest); color:#fff;
+    font-size:13.5px; font-weight:600; cursor:pointer; font-family:'Noto Sans TC',sans-serif;
+  }
+  .smart-row button:disabled{opacity:0.6; cursor:wait;}
+  .smart-status{font-size:12px; color:var(--ink-soft); margin-top:8px; min-height:16px;}
+
+  .settings-link{
+    text-align:center; padding:18px 0 6px; font-size:12px; color:var(--ink-soft); opacity:0.6;
+    text-decoration:underline; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Fragrance Archive</div>
+    <h1>香氣手記</h1>
+    <p>紀錄每一瓶香水的調性、疊擦搭配與適合的場合，不再遺忘曾經擁有過的氣味。</p>
+    <div class="stats-row">
+      <div class="stat-pill"><div class="n" id="statOwned">0</div><div class="l">已擁有</div></div>
+      <div class="stat-pill"><div class="n" id="statLiked">0</div><div class="l">喜歡</div></div>
+      <div class="stat-pill"><div class="n" id="statWish">0</div><div class="l">想入手</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="wrap">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#5C6152" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="#5C6152" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="搜尋品牌、名稱或調性...">
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-filter="all">全部</button>
+      <button class="tab-btn" data-filter="owned">已擁有</button>
+      <button class="tab-btn" data-filter="liked">喜歡</button>
+      <button class="tab-btn" data-filter="wishlist">想入手</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid" id="grid"></div>
+  <div class="settings-link" id="resetLink">清除所有資料</div>
+</div>
+
+<button class="fab" id="addBtn">＋</button>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FAMILIES = ["花香","柑橘","木質","東方","馥奇","美食調","清新","綠意","粉香","皮革"];
+const OCCASIONS = ["日常","上班","約會","正式場合","派對","居家","運動後","夏季","冬季","雨天","節日"];
+const STATUS_LABEL = {owned:"已擁有", liked:"喜歡", wishlist:"想入手"};
+
+let state = { fragrances: [], filter: "all", search: "" };
+let editingId = null;
+let draft = null;
+
+function blankFragrance(seed){
+  return Object.assign({
+    id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    brand:"", name:"", status:"owned", family:"",
+    topNotes:"", middleNotes:"", baseNotes:"",
+    layering:"", occasions:[], personalNotes:""
+  }, seed||{});
+}
+
+// 以下資料根據品牌官網及公開產品資訊（Fragrantica、L'Occitane、Aesop、Jo Malone 等官方或授權經銷頁面）整理
+const SEED = [
+  {
+    brand:"L'OCCITANE EN PROVENCE", name:"Néroli Orchidée", status:"owned",
+    family:"花香果香",
+    topNotes:"柳橙、橘子",
+    middleNotes:"橙花、水蜜桃、無花果蜜、鈴蘭",
+    baseNotes:"蘭花、麝香、鳶尾",
+    layering:"官方建議可疊擦同系列身體乳延長香氣；也適合疊擦 Jo Malone Orange Blossom Cologne，加強橙花與白花的清透感。",
+    occasions:["日常","約會","上班","夏季"],
+    personalNotes:""
+  },
+  {
+    brand:"Aēsop", name:"Vlirère", status:"owned",
+    family:"木質芳香",
+    topNotes:"佛手柑、白花蒿(galbanum)、苦橙葉",
+    middleNotes:"綠茶、乳香脂、粉紅胡椒",
+    baseNotes:"雪松、綠瑪黛茶、乾草",
+    layering:"個性清透，單獨噴灑即完整；若想增添溫暖尾韻，可疊擦木質底韻較厚的 Daiquiri 或 Biove。",
+    occasions:["上班","日常","戶外","秋冬"],
+    personalNotes:""
+  },
+  {
+    brand:"Jo Malone London", name:"Orange Blossom Cologne", status:"owned",
+    family:"花香柑橘",
+    topNotes:"小柑橘花(Clementine Flower)",
+    middleNotes:"白丁香",
+    baseNotes:"鳶尾木(Orriswood)",
+    layering:"祖馬龍經典的「香水疊擦」概念代表作，可與其他祖馬龍香水疊擦；也適合疊擦 Néroli Orchidée 強化橙花調。",
+    occasions:["約會","春夏","日常","節日"],
+    personalNotes:""
+  },
+  {
+    brand:"Youssoufi", name:"Biove", status:"owned",
+    family:"花香綠意",
+    topNotes:"橘子、檸檬、鼠尾草、無花果葉",
+    middleNotes:"鈴蘭、木蘭花",
+    baseNotes:"檀木、廣藿香、岩蘭草",
+    layering:"木質底韻扎實，適合作為疊擦的「基底香」，上層可疊擦清爽的柑橘花香如 Jo Malone Orange Blossom。",
+    occasions:["日常","上班","戶外"],
+    personalNotes:""
+  },
+  {
+    brand:"Youssoufi", name:"Emporia Cotton", status:"owned",
+    family:"木質花香麝香",
+    topNotes:"茶葉、百里香",
+    middleNotes:"鈴蘭、玫瑰、番紅花",
+    baseNotes:"麂皮絨、檀木、麝香、琥珀",
+    layering:"溫暖的麂皮與麝香調適合秋冬單獨使用；也可疊擦清新柑橘調如 Angel Schlesser 做前調點綴。",
+    occasions:["秋冬","正式場合","約會","居家"],
+    personalNotes:""
+  },
+  {
+    brand:"Youssoufi", name:"Daiquiri", status:"owned",
+    family:"木質水生",
+    topNotes:"柳橙、莫希托(薄荷萊姆)、檸檬",
+    middleNotes:"水生調、海洋調、薄荷、鈴蘭、尤加利、茉莉",
+    baseNotes:"檀木、雪松、麝香、皮革、岩蘭草、琥珀",
+    layering:"清涼水生調適合單獨作日間香水；亦可作為疊擦的前調，銜接較厚重的東方調香水延長清新感。",
+    occasions:["夏季","運動後","戶外","日常"],
+    personalNotes:""
+  },
+  {
+    brand:"L'OCCITANE EN PROVENCE", name:"Karité Bébé 香氛水", status:"owned",
+    family:"花香（無正式前中後調分層，屬嬰兒淡香氛水）",
+    topNotes:"—",
+    middleNotes:"橙花、橙花精油(Néroli)、椴樹花、含羞草",
+    baseNotes:"—",
+    layering:"香氣極輕柔，適合噴灑在肌膚作為打底保濕，再疊擦正式香水，能讓香氣更服貼、更持久。",
+    occasions:["居家","日常","親子時光"],
+    personalNotes:""
+  },
+  {
+    brand:"Angel Schlesser", name:"Les Eaux d'un Instant — Profound Orange Wood", status:"owned",
+    family:"柑橘木質",
+    topNotes:"柳橙",
+    middleNotes:"橙樹木、苦橙葉",
+    baseNotes:"廣藿香",
+    layering:"廣藿香底韻沉穩內斂，適合疊擦較甜美的花香調如 Emporia Cotton，增添層次與溫度。",
+    occasions:["上班","日常","戶外","春夏"],
+    personalNotes:""
+  },
+];
+
+const IN_CLAUDE = typeof window.storage !== 'undefined';
+const store = {
+  async get(k){
+    if(IN_CLAUDE){ const r = await window.storage.get(k,false); return r && r.value ? r.value : null; }
+    try{ return localStorage.getItem(k); }catch(e){ return null; }
+  },
+  async set(k,v){
+    if(IN_CLAUDE){ await window.storage.set(k,v,false); return; }
+    localStorage.setItem(k,v);
+  }
+};
+
+async function loadData(){
+  try{
+    const raw = await store.get('fragrances');
+    state.fragrances = raw ? JSON.parse(raw) : null;
+  }catch(e){
+    state.fragrances = null;
+  }
+  if(!state.fragrances){
+    state.fragrances = SEED.map(s => blankFragrance(s));
+    await saveData();
+  }
+  render();
+}
+
+async function saveData(){
+  try{
+    await store.set('fragrances', JSON.stringify(state.fragrances));
+  }catch(e){
+    showToast("儲存失敗，請確認瀏覽器未封鎖儲存功能");
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function pyramidMini(f){
+  return `<div class="mini-pyramid">
+    <div class="band top"></div><div class="band mid"></div><div class="band base"></div>
+  </div>`;
+}
+
+function render(){
+  const grid = document.getElementById('grid');
+  let list = state.fragrances.filter(f => state.filter==='all' || f.status===state.filter);
+  if(state.search.trim()){
+    const q = state.search.trim().toLowerCase();
+    list = list.filter(f => (f.brand+f.name+f.family+f.topNotes+f.middleNotes+f.baseNotes).toLowerCase().includes(q));
+  }
+
+  document.getElementById('statOwned').textContent = state.fragrances.filter(f=>f.status==='owned').length;
+  document.getElementById('statLiked').textContent = state.fragrances.filter(f=>f.status==='liked').length;
+  document.getElementById('statWish').textContent = state.fragrances.filter(f=>f.status==='wishlist').length;
+
+  if(list.length === 0){
+    grid.innerHTML = `<div class="empty-state">
+      <div class="icon">🌿</div>
+      <h3>還沒有紀錄</h3>
+      <p>點右下角的「＋」，開始寫下第一瓶香水的故事。</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(f => `
+    <div class="card" data-id="${f.id}">
+      <div class="card-top">
+        <div>
+          <div class="card-brand">${esc(f.brand)||'未填品牌'}</div>
+          <div class="card-name">${esc(f.name)||'未命名'}</div>
+        </div>
+        <span class="badge ${f.status}">${STATUS_LABEL[f.status]}</span>
+      </div>
+      ${pyramidMini(f)}
+      <div class="chip-row">
+        ${f.family ? `<span class="chip family">${esc(f.family)}</span>` : ''}
+        ${(f.occasions||[]).slice(0,3).map(o=>`<span class="chip">${esc(o)}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.card').forEach(card=>{
+    card.addEventListener('click', ()=> openDetail(card.dataset.id));
+  });
+}
+
+function esc(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openDetail(id){
+  const f = state.fragrances.find(x=>x.id===id);
+  if(!f) return;
+  editingId = id;
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2>${esc(f.name)||'未命名'}</h2>
+      <button class="icon-btn" id="closeBtn">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;letter-spacing:0.05em;">${esc(f.brand)} · <span class="badge ${f.status}" style="margin-left:2px;">${STATUS_LABEL[f.status]}</span></div>
+
+    <div class="pyramid-full">
+      <div class="pyr-band top ${!f.topNotes?'empty':''}"><div class="lbl">前調 Top</div><div class="val">${esc(f.topNotes)||'尚未記錄'}</div></div>
+      <div class="pyr-band mid ${!f.middleNotes?'empty':''}"><div class="lbl">中調 Middle</div><div class="val">${esc(f.middleNotes)||'尚未記錄'}</div></div>
+      <div class="pyr-band base ${!f.baseNotes?'empty':''}"><div class="lbl">後調 Base</div><div class="val">${esc(f.baseNotes)||'尚未記錄'}</div></div>
+    </div>
+
+    <div class="detail-block">
+      <h4>香調分類</h4>
+      <div class="body-text ${!f.family?'muted':''}">${esc(f.family)||'尚未分類'}</div>
+    </div>
+    <div class="detail-block">
+      <h4>建議疊擦</h4>
+      <div class="body-text ${!f.layering?'muted':''}">${esc(f.layering)||'尚無疊擦建議'}</div>
+    </div>
+    <div class="detail-block">
+      <h4>建議場合</h4>
+      <div class="chip-row">${(f.occasions||[]).length ? f.occasions.map(o=>`<span class="chip">${esc(o)}</span>`).join('') : '<span class="body-text muted">尚未標記</span>'}</div>
+    </div>
+    <div class="detail-block">
+      <h4>個人筆記</h4>
+      <div class="body-text ${!f.personalNotes?'muted':''}">${esc(f.personalNotes)||'尚無筆記'}</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-danger" id="delBtn">刪除</button>
+      <button class="btn btn-primary" id="editBtn">編輯</button>
+    </div>
+  `;
+  document.getElementById('closeBtn').onclick = closeSheet;
+  document.getElementById('editBtn').onclick = ()=> openForm(f.id);
+  document.getElementById('delBtn').onclick = ()=> {
+    if(confirm(`確定要刪除「${f.name||'這筆紀錄'}」嗎？`)){
+      state.fragrances = state.fragrances.filter(x=>x.id!==f.id);
+      saveData(); render(); closeSheet();
+      showToast('已刪除');
+    }
+  };
+  document.getElementById('overlay').classList.add('open');
+}
+
+function openForm(id){
+  const isNew = !id;
+  draft = isNew ? blankFragrance() : Object.assign({}, state.fragrances.find(x=>x.id===id));
+  editingId = isNew ? null : id;
+
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2>${isNew ? '新增香水' : '編輯香水'}</h2>
+      <button class="icon-btn" id="closeBtn">✕</button>
+    </div>
+
+    ${IN_CLAUDE ? `
+    <div class="smart-box">
+      <div class="smart-title">🔎 自動搜尋填寫</div>
+      <div class="smart-hint">輸入「品牌＋名稱」，或貼上香水介紹網址（官網、Fragrantica 等），自動查詢並填入下方欄位。</div>
+      <div class="smart-row">
+        <input type="text" id="smartInput" placeholder="例如 Diptyque Do Son 或貼上網址">
+        <button id="smartBtn">搜尋</button>
+      </div>
+      <div class="smart-status" id="smartStatus"></div>
+    </div>` : `
+    <div class="smart-box">
+      <div class="smart-title">🔎 請 Claude 協助填寫</div>
+      <div class="smart-hint">① 輸入名稱或貼上網址，按「複製指令」<br>② 到 Claude 貼上指令並送出<br>③ 把 Claude 回傳的 JSON 貼到下方，按「匯入」</div>
+      <div class="smart-row">
+        <input type="text" id="smartInput" placeholder="例如 Diptyque Do Son 或貼上網址">
+        <button id="smartCopyBtn">複製指令</button>
+      </div>
+      <div class="field" style="margin:10px 0 0;"><textarea id="smartPaste" placeholder="把 Claude 回傳的 JSON 貼在這裡"></textarea></div>
+      <div class="smart-row" style="margin-top:8px;"><button id="smartImportBtn" style="padding:10px 14px;">匯入</button></div>
+      <div class="smart-status" id="smartStatus"></div>
+    </div>`}
+
+    <div class="row2">
+      <div class="field"><label>品牌</label><input type="text" id="f_brand" value="${esc(draft.brand)}" placeholder="例如 Jo Malone"></div>
+      <div class="field"><label>名稱</label><input type="text" id="f_name" value="${esc(draft.name)}" placeholder="例如 Orange Blossom"></div>
+    </div>
+
+    <div class="field">
+      <label>狀態</label>
+      <div class="status-picker" id="statusPicker">
+        <div class="status-opt ${draft.status==='owned'?'sel':''}" data-v="owned">已擁有</div>
+        <div class="status-opt ${draft.status==='liked'?'sel':''}" data-v="liked">喜歡</div>
+        <div class="status-opt ${draft.status==='wishlist'?'sel':''}" data-v="wishlist">想入手</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>香調分類</label>
+      <input type="text" id="f_family" list="familyList" value="${esc(draft.family)}" placeholder="例如 柑橘、木質">
+      <datalist id="familyList">${FAMILIES.map(f=>`<option value="${f}">`).join('')}</datalist>
+    </div>
+
+    <div class="field"><label>前調（揮發最快，最先聞到）</label><input type="text" id="f_top" value="${esc(draft.topNotes)}" placeholder="例如 佛手柑、檸檬"></div>
+    <div class="field"><label>中調（香氣主體）</label><input type="text" id="f_mid" value="${esc(draft.middleNotes)}" placeholder="例如 橙花、茉莉"></div>
+    <div class="field"><label>後調（最持久的底韻）</label><input type="text" id="f_base" value="${esc(draft.baseNotes)}" placeholder="例如 白麝香、雪松"></div>
+
+    <div class="field">
+      <label>建議疊擦</label>
+      <textarea id="f_layering" placeholder="例如：與 Jo Malone Orange Blossom 疊擦，柑橘感更清亮">${esc(draft.layering)}</textarea>
+    </div>
+
+    <div class="field">
+      <label>建議場合</label>
+      <div class="chip-select" id="occSelect">
+        ${OCCASIONS.map(o=>`<div class="chip-toggle ${draft.occasions.includes(o)?'on':''}" data-v="${o}">${o}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>個人筆記</label>
+      <textarea id="f_notes" placeholder="任何想記住的感受、購入日期或故事">${esc(draft.personalNotes)}</textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="cancelBtn">取消</button>
+      <button class="btn btn-primary" id="saveBtn">儲存</button>
+    </div>
+  `;
+
+  document.getElementById('closeBtn').onclick = closeSheet;
+  document.getElementById('cancelBtn').onclick = closeSheet;
+  document.getElementById('statusPicker').querySelectorAll('.status-opt').forEach(el=>{
+    el.onclick = ()=>{
+      draft.status = el.dataset.v;
+      sheet.querySelectorAll('.status-opt').forEach(o=>o.classList.remove('sel'));
+      el.classList.add('sel');
+    };
+  });
+  document.getElementById('occSelect').querySelectorAll('.chip-toggle').forEach(el=>{
+    el.onclick = ()=>{
+      const v = el.dataset.v;
+      if(draft.occasions.includes(v)){
+        draft.occasions = draft.occasions.filter(x=>x!==v);
+        el.classList.remove('on');
+      }else{
+        draft.occasions.push(v);
+        el.classList.add('on');
+      }
+    };
+  });
+  if(IN_CLAUDE){
+    document.getElementById('smartBtn').onclick = smartFill;
+    document.getElementById('smartInput').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ e.preventDefault(); smartFill(); }
+    });
+  }else{
+    document.getElementById('smartCopyBtn').onclick = copyPrompt;
+    document.getElementById('smartImportBtn').onclick = importPasted;
+  }
+  document.getElementById('saveBtn').onclick = async ()=>{
+    draft.brand = document.getElementById('f_brand').value.trim();
+    draft.name = document.getElementById('f_name').value.trim();
+    draft.family = document.getElementById('f_family').value.trim();
+    draft.topNotes = document.getElementById('f_top').value.trim();
+    draft.middleNotes = document.getElementById('f_mid').value.trim();
+    draft.baseNotes = document.getElementById('f_base').value.trim();
+    draft.layering = document.getElementById('f_layering').value.trim();
+    draft.personalNotes = document.getElementById('f_notes').value.trim();
+
+    if(!draft.name && !draft.brand){
+      showToast('請至少填寫品牌或名稱');
+      return;
+    }
+
+    if(editingId){
+      const idx = state.fragrances.findIndex(x=>x.id===editingId);
+      state.fragrances[idx] = draft;
+    }else{
+      state.fragrances.unshift(draft);
+    }
+    await saveData();
+    render();
+    closeSheet();
+    showToast('已儲存');
+  };
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function buildPrompt(q){
+  const owned = state.fragrances
+    .filter(f => f.id !== editingId)
+    .map(f => `${f.brand} ${f.name}（${f.family}）`)
+    .join('；');
+  return `請用網路搜尋這支香水的公開資訊（優先官方網站，其次 Fragrantica 等）：「${q}」。若輸入是網址，請以該網頁內容為主。
+只回傳一個 JSON 物件，不要有任何其他文字或 markdown，格式如下：
+{"brand":"品牌","name":"香水名稱","family":"香調分類（繁體中文，例如 花香柑橘）","topNotes":"前調（繁體中文，以頓號分隔）","middleNotes":"中調","baseNotes":"後調","layering":"建議疊擦，1–2 句繁體中文","occasions":["從清單挑 2–4 個：${OCCASIONS.join('、')}"]}
+規則：查不到的調性請留空字串，不要編造；若查無此香水，brand 與 name 也留空。疊擦建議請優先參考使用者已有的香水：${owned || '（無）'}。`;
+}
+
+function applyResult(r){
+  const status = document.getElementById('smartStatus');
+  if(!r.brand && !r.name){
+    status.textContent = '查無這支香水，請換個關鍵字或貼上介紹網址。';
+    return;
+  }
+  const set = (id, v) => { if(v) document.getElementById(id).value = v; };
+  set('f_brand', r.brand); set('f_name', r.name); set('f_family', r.family);
+  set('f_top', r.topNotes); set('f_mid', r.middleNotes); set('f_base', r.baseNotes);
+  set('f_layering', r.layering);
+  const occ = (r.occasions||[]).filter(o => OCCASIONS.includes(o));
+  if(occ.length){
+    draft.occasions = occ;
+    document.querySelectorAll('#occSelect .chip-toggle').forEach(el=>{
+      el.classList.toggle('on', occ.includes(el.dataset.v));
+    });
+  }
+  status.textContent = '已填入！請確認內容後按「儲存」。查不到的欄位已留空。';
+}
+
+async function smartFill(){
+  const q = document.getElementById('smartInput').value.trim();
+  const btn = document.getElementById('smartBtn');
+  const status = document.getElementById('smartStatus');
+  if(!q){ status.textContent = '請先輸入香水名稱或網址'; return; }
+  btn.disabled = true; btn.textContent = '搜尋中…';
+  status.textContent = '正在查詢公開資料，約需 10–20 秒…';
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-6",
+        max_tokens:1000,
+        tools:[{type:"web_search_20250305", name:"web_search"}],
+        messages:[{role:"user", content:buildPrompt(q)}]
+      })
+    });
+    const data = await res.json();
+    const text = (data.content||[]).map(b => b.type==='text' ? b.text : '').join('');
+    const m = text.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('no json');
+    applyResult(JSON.parse(m[0]));
+  }catch(e){
+    status.textContent = '搜尋失敗，請稍後再試，或貼上介紹網址。';
+  }finally{
+    btn.disabled = false; btn.textContent = '搜尋';
+  }
+}
+
+async function copyPrompt(){
+  const q = document.getElementById('smartInput').value.trim();
+  const status = document.getElementById('smartStatus');
+  if(!q){ status.textContent = '請先輸入香水名稱或網址'; return; }
+  const text = buildPrompt(q);
+  try{
+    await navigator.clipboard.writeText(text);
+    status.textContent = '指令已複製！請貼到 Claude，再把回傳的 JSON 貼回下方。';
+  }catch(e){
+    const ta = document.getElementById('smartPaste');
+    ta.value = text; ta.select();
+    status.textContent = '無法自動複製，指令已放在下方框中，請手動複製後貼到 Claude。';
+  }
+}
+
+function importPasted(){
+  const status = document.getElementById('smartStatus');
+  const raw = document.getElementById('smartPaste').value;
+  const m = raw.match(/\{[\s\S]*\}/);
+  if(!m){ status.textContent = '找不到 JSON，請貼上 Claude 回傳的完整內容。'; return; }
+  try{
+    applyResult(JSON.parse(m[0]));
+    document.getElementById('smartPaste').value = '';
+  }catch(e){
+    status.textContent = '格式無法解析，請確認貼上的是完整的 JSON。';
+  }
+}
+
+function closeSheet(){
+  document.getElementById('overlay').classList.remove('open');
+  editingId = null; draft = null;
+}
+
+document.getElementById('overlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'overlay') closeSheet();
+});
+
+document.getElementById('addBtn').addEventListener('click', ()=> openForm(null));
+
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  if(!e.target.classList.contains('tab-btn')) return;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.filter = e.target.dataset.filter;
+  render();
+});
+
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  state.search = e.target.value;
+  render();
+});
+
+document.getElementById('resetLink').addEventListener('click', async ()=>{
+  if(confirm('確定要清除所有香水紀錄嗎？此動作無法復原。')){
+    state.fragrances = [];
+    await saveData();
+    render();
+    showToast('已清除所有資料');
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>
