@@ -561,7 +561,6 @@ function openForm(id){
       <button class="icon-btn" id="closeBtn">✕</button>
     </div>
 
-    ${IN_CLAUDE ? `
     <div class="smart-box">
       <div class="smart-title">🔎 自動搜尋填寫</div>
       <div class="smart-hint">輸入「品牌＋名稱」，或貼上香水介紹網址（官網、Fragrantica 等），自動查詢並填入下方欄位。</div>
@@ -570,18 +569,7 @@ function openForm(id){
         <button id="smartBtn">搜尋</button>
       </div>
       <div class="smart-status" id="smartStatus"></div>
-    </div>` : `
-    <div class="smart-box">
-      <div class="smart-title">🔎 請 Claude 協助填寫</div>
-      <div class="smart-hint">① 輸入名稱或貼上網址，按「複製指令」<br>② 到 Claude 貼上指令並送出<br>③ 把 Claude 回傳的 JSON 貼到下方，按「匯入」</div>
-      <div class="smart-row">
-        <input type="text" id="smartInput" placeholder="例如 Diptyque Do Son 或貼上網址">
-        <button id="smartCopyBtn">複製指令</button>
-      </div>
-      <div class="field" style="margin:10px 0 0;"><textarea id="smartPaste" placeholder="把 Claude 回傳的 JSON 貼在這裡"></textarea></div>
-      <div class="smart-row" style="margin-top:8px;"><button id="smartImportBtn" style="padding:10px 14px;">匯入</button></div>
-      <div class="smart-status" id="smartStatus"></div>
-    </div>`}
+    </div>
 
     <div class="row2">
       <div class="field"><label>品牌</label><input type="text" id="f_brand" value="${esc(draft.brand)}" placeholder="例如 Jo Malone"></div>
@@ -651,15 +639,10 @@ function openForm(id){
       }
     };
   });
-  if(IN_CLAUDE){
-    document.getElementById('smartBtn').onclick = smartFill;
-    document.getElementById('smartInput').addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter'){ e.preventDefault(); smartFill(); }
-    });
-  }else{
-    document.getElementById('smartCopyBtn').onclick = copyPrompt;
-    document.getElementById('smartImportBtn').onclick = importPasted;
-  }
+  document.getElementById('smartBtn').onclick = smartFill;
+  document.getElementById('smartInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); smartFill(); }
+  });
   document.getElementById('saveBtn').onclick = async ()=>{
     draft.brand = document.getElementById('f_brand').value.trim();
     draft.name = document.getElementById('f_name').value.trim();
@@ -726,6 +709,7 @@ async function smartFill(){
   const btn = document.getElementById('smartBtn');
   const status = document.getElementById('smartStatus');
   if(!q){ status.textContent = '請先輸入香水名稱或網址'; return; }
+  if(!IN_CLAUDE){ status.textContent = '自動搜尋只能在 Claude 內使用；在自己的網站上請手動填寫。'; return; }
   btn.disabled = true; btn.textContent = '搜尋中…';
   status.textContent = '正在查詢公開資料，約需 10–20 秒…';
   try{
@@ -748,34 +732,6 @@ async function smartFill(){
     status.textContent = '搜尋失敗，請稍後再試，或貼上介紹網址。';
   }finally{
     btn.disabled = false; btn.textContent = '搜尋';
-  }
-}
-
-async function copyPrompt(){
-  const q = document.getElementById('smartInput').value.trim();
-  const status = document.getElementById('smartStatus');
-  if(!q){ status.textContent = '請先輸入香水名稱或網址'; return; }
-  const text = buildPrompt(q);
-  try{
-    await navigator.clipboard.writeText(text);
-    status.textContent = '指令已複製！請貼到 Claude，再把回傳的 JSON 貼回下方。';
-  }catch(e){
-    const ta = document.getElementById('smartPaste');
-    ta.value = text; ta.select();
-    status.textContent = '無法自動複製，指令已放在下方框中，請手動複製後貼到 Claude。';
-  }
-}
-
-function importPasted(){
-  const status = document.getElementById('smartStatus');
-  const raw = document.getElementById('smartPaste').value;
-  const m = raw.match(/\{[\s\S]*\}/);
-  if(!m){ status.textContent = '找不到 JSON，請貼上 Claude 回傳的完整內容。'; return; }
-  try{
-    applyResult(JSON.parse(m[0]));
-    document.getElementById('smartPaste').value = '';
-  }catch(e){
-    status.textContent = '格式無法解析，請確認貼上的是完整的 JSON。';
   }
 }
 
