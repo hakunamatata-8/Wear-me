@@ -250,6 +250,11 @@
   .smart-row button:disabled{opacity:0.6; cursor:wait;}
   .smart-status{font-size:12px; color:var(--ink-soft); margin-top:8px; min-height:16px;}
 
+  .footer-links{display:flex; justify-content:center; gap:22px; flex-wrap:wrap; padding:18px 0 6px;}
+  .footer-links .settings-link{padding:0;}
+  .io-text{width:100%; min-height:180px; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-size:12.5px; font-family:ui-monospace,Menlo,monospace; background:#fff; color:var(--ink); outline:none; resize:vertical;}
+  #overlay2{z-index:60;}
   .settings-link{
     text-align:center; padding:18px 0 6px; font-size:12px; color:var(--ink-soft); opacity:0.6;
     text-decoration:underline; cursor:pointer;
@@ -288,13 +293,21 @@
 
 <div class="wrap">
   <div class="grid" id="grid"></div>
-  <div class="settings-link" id="resetLink">清除所有資料</div>
+  <div class="footer-links">
+    <div class="settings-link" id="importLink">匯入資料</div>
+    <div class="settings-link" id="exportLink">複製全部資料</div>
+    <div class="settings-link" id="resetLink">清除所有資料</div>
+  </div>
 </div>
 
 <button class="fab" id="addBtn">＋</button>
 
 <div class="overlay" id="overlay">
   <div class="sheet" id="sheet"></div>
+</div>
+
+<div class="overlay" id="overlay2">
+  <div class="sheet" id="sheet2"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -533,11 +546,13 @@ function openDetail(id){
 
     <div class="btn-row">
       <button class="btn btn-danger" id="delBtn">刪除</button>
+      <button class="btn btn-ghost" id="copyBtn">複製資料</button>
       <button class="btn btn-primary" id="editBtn">編輯</button>
     </div>
   `;
   document.getElementById('closeBtn').onclick = closeSheet;
   document.getElementById('editBtn').onclick = ()=> openForm(f.id);
+  document.getElementById('copyBtn').onclick = ()=> copyText(exportOne(f));
   document.getElementById('delBtn').onclick = ()=> {
     if(confirm(`確定要刪除「${f.name||'這筆紀錄'}」嗎？`)){
       state.fragrances = state.fragrances.filter(x=>x.id!==f.id);
@@ -614,12 +629,17 @@ function openForm(id){
 
     <div class="btn-row">
       <button class="btn btn-ghost" id="cancelBtn">取消</button>
+      <button class="btn btn-ghost" id="formCopyBtn">複製資料</button>
       <button class="btn btn-primary" id="saveBtn">儲存</button>
     </div>
   `;
 
   document.getElementById('closeBtn').onclick = closeSheet;
   document.getElementById('cancelBtn').onclick = closeSheet;
+  document.getElementById('formCopyBtn').onclick = ()=>{
+    readForm();
+    copyText(exportOne(draft));
+  };
   document.getElementById('statusPicker').querySelectorAll('.status-opt').forEach(el=>{
     el.onclick = ()=>{
       draft.status = el.dataset.v;
@@ -735,6 +755,100 @@ async function smartFill(){
   }
 }
 
+function readForm(){
+  draft.brand = document.getElementById('f_brand').value.trim();
+  draft.name = document.getElementById('f_name').value.trim();
+  draft.family = document.getElementById('f_family').value.trim();
+  draft.topNotes = document.getElementById('f_top').value.trim();
+  draft.middleNotes = document.getElementById('f_mid').value.trim();
+  draft.baseNotes = document.getElementById('f_base').value.trim();
+  draft.layering = document.getElementById('f_layering').value.trim();
+  draft.personalNotes = document.getElementById('f_notes').value.trim();
+}
+
+function cleanItem(f){
+  return {
+    brand:f.brand||"", name:f.name||"", status:f.status||"owned", family:f.family||"",
+    topNotes:f.topNotes||"", middleNotes:f.middleNotes||"", baseNotes:f.baseNotes||"",
+    layering:f.layering||"", occasions:f.occasions||[], personalNotes:f.personalNotes||""
+  };
+}
+function exportOne(f){ return JSON.stringify(cleanItem(f), null, 2); }
+function exportAll(){ return JSON.stringify(state.fragrances.map(cleanItem), null, 2); }
+
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast('已複製，可到其他網站按「匯入資料」貼上');
+  }catch(e){
+    openTextSheet(text);
+  }
+}
+
+function openOverlay2(html){
+  document.getElementById('sheet2').innerHTML = html;
+  document.getElementById('overlay2').classList.add('open');
+}
+function closeOverlay2(){ document.getElementById('overlay2').classList.remove('open'); }
+
+function openTextSheet(text){
+  openOverlay2(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h2>手動複製資料</h2><button class="icon-btn" id="o2Close">✕</button></div>
+    <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;line-height:1.6;">瀏覽器不允許自動複製，請在下方框內全選並複製，再到其他網站按「匯入資料」貼上。</div>
+    <textarea class="io-text" id="o2Text" readonly></textarea>
+    <div class="btn-row"><button class="btn btn-primary" id="o2Done">完成</button></div>
+  `);
+  const ta = document.getElementById('o2Text');
+  ta.value = text; ta.focus(); ta.select();
+  document.getElementById('o2Close').onclick = closeOverlay2;
+  document.getElementById('o2Done').onclick = closeOverlay2;
+}
+
+function openImport(){
+  openOverlay2(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h2>匯入資料</h2><button class="icon-btn" id="o2Close">✕</button></div>
+    <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;line-height:1.6;">貼上從其他網站「複製資料」得到的內容（單支或全部都可以）。品牌與名稱相同的香水會被更新，其他則新增。</div>
+    <textarea class="io-text" id="o2Text" placeholder="在這裡貼上資料"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="o2Cancel">取消</button>
+      <button class="btn btn-primary" id="o2Import">匯入</button>
+    </div>
+  `);
+  document.getElementById('o2Close').onclick = closeOverlay2;
+  document.getElementById('o2Cancel').onclick = closeOverlay2;
+  document.getElementById('o2Import').onclick = async ()=>{
+    const raw = document.getElementById('o2Text').value.trim();
+    let data;
+    try{
+      data = JSON.parse(raw);
+    }catch(e){
+      showToast('格式無法解析，請貼上完整內容');
+      return;
+    }
+    if(data && Array.isArray(data.fragrances)) data = data.fragrances;
+    const items = (Array.isArray(data) ? data : [data]).filter(x => x && typeof x==='object' && (x.brand || x.name));
+    if(!items.length){ showToast('沒有可匯入的香水資料'); return; }
+    let added = 0, updated = 0;
+    items.forEach(it=>{
+      const key = ((it.brand||'')+'|'+(it.name||'')).toLowerCase();
+      const idx = state.fragrances.findIndex(f => ((f.brand||'')+'|'+(f.name||'')).toLowerCase() === key);
+      if(idx >= 0){
+        state.fragrances[idx] = Object.assign({}, state.fragrances[idx], cleanItem(it));
+        updated++;
+      }else{
+        state.fragrances.unshift(blankFragrance(cleanItem(it)));
+        added++;
+      }
+    });
+    await saveData();
+    render();
+    closeOverlay2();
+    showToast(`已匯入：新增 ${added} 筆、更新 ${updated} 筆`);
+  };
+}
+
 function closeSheet(){
   document.getElementById('overlay').classList.remove('open');
   editingId = null; draft = null;
@@ -766,6 +880,12 @@ document.getElementById('resetLink').addEventListener('click', async ()=>{
     render();
     showToast('已清除所有資料');
   }
+});
+
+document.getElementById('importLink').addEventListener('click', openImport);
+document.getElementById('exportLink').addEventListener('click', ()=> copyText(exportAll()));
+document.getElementById('overlay2').addEventListener('click', (e)=>{
+  if(e.target.id === 'overlay2') closeOverlay2();
 });
 
 loadData();
